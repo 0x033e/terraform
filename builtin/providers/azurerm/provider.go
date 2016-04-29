@@ -5,13 +5,14 @@ import (
 	"reflect"
 	"strings"
 
+	"sync"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform/helper/mutexkv"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 	riviera "github.com/jen20/riviera/azure"
-	"sync"
 )
 
 // Provider returns a terraform.ResourceProvider.
@@ -63,6 +64,7 @@ func Provider() terraform.ResourceProvider {
 			"azurerm_template_deployment":    resourceArmTemplateDeployment(),
 			"azurerm_virtual_machine":        resourceArmVirtualMachine(),
 			"azurerm_virtual_network":        resourceArmVirtualNetwork(),
+			"azurerm_simple_lb":              resourceArmSimpleLb(),
 
 			// These resources use the Riviera SDK
 			"azurerm_dns_a_record":      resourceArmDnsARecord(),
