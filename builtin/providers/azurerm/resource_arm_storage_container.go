@@ -174,7 +174,7 @@ func resourceArmStorageContainerExists(d *schema.ResourceData, meta interface{})
 
 	blobClient, accountExists, err := armClient.getBlobStorageClientForStorageAccount(resourceGroupName, storageAccountName)
 	if err != nil {
-		return false, err
+		return false, nil
 	}
 	if !accountExists {
 		log.Printf("[DEBUG] Storage account %q not found, removing container %q from state", storageAccountName, d.Id())
