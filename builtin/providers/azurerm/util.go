@@ -7,8 +7,8 @@ func String(value interface{}) *string {
 	return &s
 }
 
-func Int(value interface{}) *int {
-	i := value.(int)
+func Int32(value interface{}) *int32 {
+	i := int32(value.(int))
 	return &i
 }
 

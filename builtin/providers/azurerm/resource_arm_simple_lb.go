@@ -277,8 +277,8 @@ func pullOutLbRules(d *schema.ResourceData, loadBalancer network.LoadBalancer) (
 		props := network.LoadBalancingRulePropertiesFormat{
 			Protocol:                network.TransportProtocol(rule["protocol"].(string)),
 			LoadDistribution:        network.LoadDistribution(rule["load_distribution"].(string)),
-			FrontendPort:            Int(rule["frontend_port"]),
-			BackendPort:             Int(rule["backend_port"]),
+			FrontendPort:            Int32(rule["frontend_port"]),
+			BackendPort:             Int32(rule["backend_port"]),
 			Probe:                   &network.SubResource{ID: probe.ID},
 			BackendAddressPool:      &network.SubResource{ID: backendPoolID},
 			FrontendIPConfiguration: &network.SubResource{ID: frontendIpID},
@@ -305,9 +305,9 @@ func pullOutProbes(d *schema.ResourceData) (*[]network.Probe, error) {
 
 			probeProps := network.ProbePropertiesFormat{
 				Protocol:          network.ProbeProtocol(probe["protocol"].(string)),
-				Port:              Int(probe["port"]),
-				IntervalInSeconds: Int(probe["interval"]),
-				NumberOfProbes:    Int(probe["number_of_probes"]),
+				Port:              Int32(probe["port"]),
+				IntervalInSeconds: Int32(probe["interval"]),
+				NumberOfProbes:    Int32(probe["number_of_probes"]),
 			}
 			if requestPath := probe["request_path"].(string); requestPath != "" {
 				probeProps.RequestPath = &requestPath
@@ -406,7 +406,7 @@ func resourceArmSimpleLbCreate(d *schema.ResourceData, meta interface{}) error {
 	loadBalancer.Properties.BackendAddressPools = &backendPoolConfs
 	loadBalancer.Properties.LoadBalancingRules = &[]network.LoadBalancingRule{}
 
-	resp, err := lbClient.CreateOrUpdate(resGrp, name, loadBalancer)
+	resp, err := createOrUpdate(lbClient, resGrp, name, loadBalancer)
 	if err != nil {
 		log.Printf("[resourceArmSimpleLb] ERROR LB got status %s", err.Error())
 		return fmt.Errorf("Error issuing Azure ARM creation request for load balancer '%s': %s", name, err)
@@ -425,7 +425,7 @@ func resourceArmSimpleLbCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	log.Printf("[resourceArmSimpleLb] created %d rules", len(*loadBalancer.Properties.LoadBalancingRules))
 
-	resp, err = lbClient.CreateOrUpdate(resGrp, name, loadBalancer)
+	resp, err = createOrUpdate(lbClient, resGrp, name, loadBalancer)
 	if err != nil {
 		log.Printf("[resourceArmSimpleLb] ERROR When trying to set the rules.  LB got status %s", err.Error())
 		return fmt.Errorf("Error issuing Azure ARM creation request for load balancer '%s': %s", name, err)
@@ -561,7 +561,7 @@ func resourceArmSimpleLbUpdate(d *schema.ResourceData, meta interface{}) error {
 	loadBalancer.Properties.BackendAddressPools = &backendPoolConfs
 	loadBalancer.Properties.LoadBalancingRules = &[]network.LoadBalancingRule{}
 
-	resp, err := lbClient.CreateOrUpdate(resGrp, name, loadBalancer)
+	resp, err := createOrUpdate(lbClient, resGrp, name, loadBalancer)
 	if err != nil {
 		log.Printf("[resourceArmSimpleLb] ERROR Update LB got status %s", err.Error())
 		return fmt.Errorf("Error issuing Azure ARM creation request for load balancer '%s': %s", name, err)
@@ -580,7 +580,7 @@ func resourceArmSimpleLbUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 	log.Printf("[resourceArmSimpleLb] created %d rules", len(*loadBalancer.Properties.LoadBalancingRules))
 
-	resp, err = lbClient.CreateOrUpdate(resGrp, name, loadBalancer)
+	resp, err = createOrUpdate(lbClient, resGrp, name, loadBalancer)
 	if err != nil {
 		log.Printf("[resourceArmSimpleLb] ERROR When trying to set the rules.  Update LB got status %s", err.Error())
 		return fmt.Errorf("Error issuing Azure ARM creation request for load balancer '%s': %s", name, err)
@@ -601,7 +601,7 @@ func resourceArmSimpleLbDelete(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[INFO] Issuing deletion request to Azure ARM for load balancer '%s'.", name)
 
-	resp, err := lbClient.Delete(resGroup, name)
+	resp, err := lbClient.Delete(resGroup, name, make(chan struct{}))
 	if err != nil {
 		return fmt.Errorf("Error issuing Azure ARM delete request for load balancer '%s': %s", name, err)
 	}
@@ -668,4 +668,13 @@ func flattenAllOfLb(loadBalancer network.LoadBalancer, d *schema.ResourceData, m
 	d.SetId(*loadBalancer.ID)
 
 	return nil
+}
+
+func createOrUpdate(client network.LoadBalancersClient, resourceGroupName string, loadBalancerName string, parameters network.LoadBalancer) (network.LoadBalancer, error) {
+	_, err := client.CreateOrUpdate(resourceGroupName, loadBalancerName, parameters, make(chan struct{}))
+	if err != nil {
+		return network.LoadBalancer{}, err
+	}
+
+	return client.Get(resourceGroupName, loadBalancerName, "")
 }
